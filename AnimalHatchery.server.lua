@@ -225,7 +225,8 @@ local function hatch(player)
     prompt.Enabled = false
     local data = choosePet() -- Server decides the result, never the client.
     local eggType = data.element == "fire" and "ОГНЕННОЕ" or (data.element == "ice" and "СНЕЖНОЕ" or (data.rarity == "ЭПИЧЕСКИЙ" and "ЗОЛОТОЕ" or "ОБЫЧНОЕ"))
-    remote:FireClient(player, "start", {name=data.name, rarity=data.rarity, eggType=eggType})
+    local eggRarity = ({["ОБЫЧНОЕ"]="ОБЫЧНОЕ", ["СНЕЖНОЕ"]="РЕДКОЕ", ["ЗОЛОТОЕ"]="ЭПИЧЕСКОЕ", ["ОГНЕННОЕ"]="МИФИЧЕСКОЕ"})[eggType]
+    remote:FireClient(player, "start", {name=data.name, rarity=data.rarity, eggType=eggType, eggRarity=eggRarity})
     local fx = Instance.new("Folder")
     fx.Name = "HatchEffects"
     fx.Parent = world
@@ -243,8 +244,9 @@ local function hatch(player)
         tween(egg, 0.16, {CFrame=CFrame.new(eggPos+Vector3.new(0,i*0.13,0))*CFrame.Angles(0,0,math.rad(angle)), Size=Vector3.new(2.35,3,2.35)*(1+i*0.045)})
         task.wait(0.17)
     end
-    effects(fx, data)
-    tween(egg, 0.25, {Size=Vector3.new(6,6,6), Transparency=1})
+    -- Keep the station locked while the client cinematic is playing.
+    tween(egg, 0.5, {Transparency=1})
+    task.wait(14)
     local reveal = makePet(data, fx)
     reveal:PivotTo(CFrame.new(eggPos+Vector3.new(0,1,0))*CFrame.Angles(0,math.pi,0))
     label(reveal.PrimaryPart, "✦ "..data.rarity.." ✦\n"..data.name, 280, Vector3.new(0,4,0), C(255,232,151))
