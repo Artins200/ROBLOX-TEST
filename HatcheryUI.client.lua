@@ -168,8 +168,8 @@ local function revealFire(result)
     tween(column,2,{Size=Vector3.new(16,3,3),CFrame=CFrame.new(0,8,0)*CFrame.Angles(0,0,math.pi/2)})
     local start = egg:GetPivot(); local rising = Instance.new("NumberValue"); rising.Value = 0
     local connection = rising.Changed:Connect(function(v) if egg.Parent then egg:PivotTo(start*CFrame.new(0,v,0)*CFrame.Angles(0,v*0.2,0)) end end)
-    tween(rising,2,{Value=9}):Completed:Wait(); connection:Disconnect(); rising:Destroy()
-    tween(camera,1.2,{CFrame=CFrame.lookAt(Vector3.new(7,13,10),Vector3.new(0,10,0))}):Completed:Wait()
+    tween(rising,2,{Value=9}).Completed:Wait(); connection:Disconnect(); rising:Destroy()
+    tween(camera,1.2,{CFrame=CFrame.lookAt(Vector3.new(7,13,10),Vector3.new(0,10,0))}).Completed:Wait()
     sceneText.Text = "МИФИЧЕСКОЕ МАГМОВОЕ ЯЙЦО"
     sceneSub.Text = result.name .. " • " .. result.rarity
     task.wait(2)
