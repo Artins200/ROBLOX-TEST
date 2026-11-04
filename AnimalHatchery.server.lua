@@ -4,6 +4,13 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local remote = ReplicatedStorage:FindFirstChild("BlockyHatchRemote")
+if not remote then
+    remote = Instance.new("RemoteEvent")
+    remote.Name = "BlockyHatchRemote"
+    remote.Parent = ReplicatedStorage
+end
 
 local old = workspace:FindFirstChild("BlockyPetHatchery")
 if old then old:Destroy() end
@@ -59,6 +66,7 @@ local pets = {
     {name="КОТИК", weight=24, rarity="ОБЫЧНЫЙ", body=C(209,196,180), accent=C(148,129,119), ears="point", tail="long"},
     {name="ЗАЙЧИК", weight=18, rarity="РЕДКИЙ", body=C(227,222,215), accent=C(235,163,180), ears="long", tail="puff"},
     {name="ЛИСЁНОК", weight=13, rarity="РЕДКИЙ", body=C(227,137,77), accent=C(151,81,58), ears="point", tail="fox"},
+    {name="ЗОЛОТОЙ КОТИК", weight=5, rarity="ЭПИЧЕСКИЙ", body=C(244,196,85), accent=C(190,127,47), ears="point", tail="long"},
     {name="ВОЛЧОНОК", weight=8, rarity="ЭПИЧЕСКИЙ", body=C(142,159,179), accent=C(77,93,115), ears="point", tail="fox", element="ice"},
     {name="ЛЕДЯНОЙ ДРАКОНЧИК", weight=3, rarity="ЛЕГЕНДАРНЫЙ", body=C(119,213,237), accent=C(55,142,193), ears="point", tail="long", element="ice", dragon=true},
     {name="ЛАВОВЫЙ ДРАКОНЧИК", weight=2, rarity="МИФИЧЕСКИЙ", body=C(100,73,75), accent=C(255,106,45), ears="point", tail="long", element="fire", dragon=true},
@@ -173,7 +181,22 @@ local function effects(folder, data)
             local pos = center + Vector3.new(math.cos(a)*8,0,math.sin(a)*8)
             local volcano = part(folder, "Volcano", Vector3.new(3,0.1,3), CFrame.new(pos), C(66,53,56), Enum.Material.Slate)
             tween(volcano, 0.55, {Size=Vector3.new(3,3.5,3), Position=pos+Vector3.new(0,1.75,0)})
-            local lava = part(folder, "Lava", Vector3.new(1.5,0.2,1.5), CFrame.new(pos+Vector3.new(0,3.55,0)), color, Enum.Material.Neon)
+            for layer = 1, 3 do
+                local width = 3.5 - layer * 0.7
+                local rock = part(folder, "VolcanoSlope", Vector3.new(width,0.8,width), CFrame.new(pos+Vector3.new(0,2.8+layer*0.65,0)), C(58,49,51), Enum.Material.Slate)
+                rock.Transparency = 0.08
+            end
+            local lava = part(folder, "Lava", Vector3.new(1.3,0.25,1.3), CFrame.new(pos+Vector3.new(0,5,0)), color, Enum.Material.Neon)
+            local smoke = Instance.new("Smoke")
+            smoke.Color = C(55,49,49)
+            smoke.Size = 5
+            smoke.RiseVelocity = 9
+            smoke.Opacity = 0.5
+            smoke.Parent = lava
+            for j = 1, 4 do
+                local lavaFlow = part(folder, "LavaFlow", Vector3.new(0.2,2.5,0.2), CFrame.new(pos+Vector3.new((j%2==0 and 1 or -1)*0.6,2.7,(j<3 and 1 or -1)*0.6))*CFrame.Angles(math.rad(12),0,math.rad(12)), color, Enum.Material.Neon)
+                lavaFlow.Transparency = 0.1
+            end
             task.delay(0.5, function() if lava.Parent then burst(folder, lava.Position, color, 8, 5) end end)
         end
     elseif data.element == "ice" then
@@ -193,11 +216,16 @@ local function equip(player, data)
     label(model.PrimaryPart, data.name .. "\n" .. data.rarity, 170, Vector3.new(0,3.8,0), C(255,244,184))
     activePets[player] = model
 end
-prompt.Triggered:Connect(function(player)
-    if busy then return end
+local function hatch(player)
+    if busy then
+        remote:FireClient(player, "busy")
+        return
+    end
     busy = true
     prompt.Enabled = false
     local data = choosePet() -- Server decides the result, never the client.
+    local eggType = data.element == "fire" and "ОГНЕННОЕ" or (data.element == "ice" and "СНЕЖНОЕ" or (data.rarity == "ЭПИЧЕСКИЙ" and "ЗОЛОТОЕ" or "ОБЫЧНОЕ"))
+    remote:FireClient(player, "start", {name=data.name, rarity=data.rarity, eggType=eggType})
     local fx = Instance.new("Folder")
     fx.Name = "HatchEffects"
     fx.Parent = world
@@ -228,6 +256,10 @@ prompt.Triggered:Connect(function(player)
     spot2.Transparency = 0
     prompt.Enabled = true
     busy = false
+end
+prompt.Triggered:Connect(hatch)
+remote.OnServerEvent:Connect(function(player, action)
+    if action == "hatch" then hatch(player) end
 end)
 Players.PlayerRemoving:Connect(function(player)
     if activePets[player] then activePets[player]:Destroy(); activePets[player] = nil end
